@@ -22,6 +22,10 @@ import org.exoplatform.container.ExoContainerContext;
 import org.exoplatform.container.PortalContainer;
 import org.exoplatform.container.xml.PortalContainerInfo;
 import org.exoplatform.portal.application.PortalRequestContext;
+import org.exoplatform.portal.config.DataStorage;
+import org.exoplatform.portal.config.UserPortalConfig;
+import org.exoplatform.portal.config.UserPortalConfigService;
+import org.exoplatform.portal.config.model.PortalConfig;
 import org.exoplatform.portal.webui.util.Util;
 import org.exoplatform.services.security.ConversationState;
 import org.exoplatform.web.application.Parameter;
@@ -46,33 +50,33 @@ import java.util.ResourceBundle;
  * Oct 23, 2012
  */
 @ComponentConfig(
-  lifecycle = Lifecycle.class, 
-  template = "classpath:groovy/webui/commons/UISpaceSwitcher.gtmpl",
-  events = {@EventConfig(listeners = UISpacesSwitcher.SelectSpaceActionListener.class)}
+    lifecycle = Lifecycle.class,
+    template = "classpath:groovy/webui/commons/UISpaceSwitcher.gtmpl",
+    events = {@EventConfig(listeners = UISpacesSwitcher.SelectSpaceActionListener.class)}
 )
 public class UISpacesSwitcher extends UIContainer {
   public static final String SPACE_ID_PARAMETER = "spaceId";
-  
+
   public static final String SELECT_SPACE_ACTION = "SelectSpace";
-  
+
   public static final long DEFAULT_INVALIDING_CACHE_TIME = 60000;
-  
+
   private EventUIComponent eventComponent;
-  
+
   private String currentSpaceName = StringUtils.EMPTY;
-  
+
   protected long invalidingCacheTime;
-  
+
   private boolean isShowPortalSpace = true;
-  
+
   private boolean isShowUserSpace = true;
-  
+
   private boolean isAutoResize = false;
-  
+
   private String mySpaceLabel = null;
-  
+
   private String portalSpaceLabel = null;
-  
+
   public UISpacesSwitcher() throws Exception {
     String invalidingCacheTimeProperty = System.getProperty("commons.spaceswitcher.cache.interval");
     if ((invalidingCacheTimeProperty == null) || invalidingCacheTimeProperty.isEmpty()) {
@@ -80,41 +84,42 @@ public class UISpacesSwitcher extends UIContainer {
     } else {
       invalidingCacheTime = Long.parseLong(invalidingCacheTimeProperty);
     }
+    initPortalSpaceLabel();
   }
-  
+
   public void init(EventUIComponent eventComponent) {
     this.eventComponent = eventComponent;
   }
-  
+
   public EventUIComponent getEventComponent() {
     return eventComponent;
   }
-  
+
   public void setCurrentSpaceName(String currentSpaceName) {
     this.currentSpaceName = currentSpaceName;
   }
-  
+
   public String getCurrentSpaceName() {
     return currentSpaceName;
   }
-  
+
   public String getMySpaceLabel() {
     if (!StringUtils.isEmpty(mySpaceLabel)) {
       return mySpaceLabel;
     }
     try{
-    ResourceBundle bundle = RequestContext.getCurrentInstance().getApplicationResourceBundle();
-    return bundle.getString("UISpaceSwitcher.title.my-space");
+      ResourceBundle bundle = RequestContext.getCurrentInstance().getApplicationResourceBundle();
+      return bundle.getString("UISpaceSwitcher.title.my-space");
     }catch(MissingResourceException ex){
-        return   "UISpaceSwitcher.title.my-space";
+      return   "UISpaceSwitcher.title.my-space";
 
-      }
+    }
   }
-  
+
   public void setMySpaceLabel(String mySpaceLabel) {
     this.mySpaceLabel = mySpaceLabel;
   }
-  
+
   public boolean isShowPortalSpace() {
     return isShowPortalSpace;
   }
@@ -130,11 +135,11 @@ public class UISpacesSwitcher extends UIContainer {
   public void setShowUserSpace(boolean isShowUserSpace) {
     this.isShowUserSpace = isShowUserSpace;
   }
-  
+
   public void setAutoResize(boolean isAutoResize) {
     this.isAutoResize = isAutoResize;
   }
-  
+
   public boolean isAutoResize() {
     return isAutoResize;
   }
@@ -145,9 +150,9 @@ public class UISpacesSwitcher extends UIContainer {
       return conversationState.getIdentity().getUserId();
     }catch(Exception e){
       return "system" ;
-    }    
+    }
   }
-  
+
   public String getPortalSpaceId() {
     PortalRequestContext portalRequestContext = Util.getPortalRequestContext();
     String portalOwner = portalRequestContext.getPortalOwner();
@@ -159,16 +164,16 @@ public class UISpacesSwitcher extends UIContainer {
     spaceId.append(portalOwner);
     return spaceId.toString();
   }
-  
+
   private String getPortalName() {
-    ExoContainer container = ExoContainerContext.getCurrentContainer() ; 
+    ExoContainer container = ExoContainerContext.getCurrentContainer() ;
     PortalContainerInfo containerInfo = (PortalContainerInfo)container.getComponentInstanceOfType(PortalContainerInfo.class);
     return containerInfo.getContainerName();
   }
-  
+
   public String getPortalSpaceLabel() {
     if (!StringUtils.isEmpty(portalSpaceLabel)) {
-      return portalSpaceLabel;
+      return upperFirstCharacter(portalSpaceLabel);
     }
     PortalRequestContext portalRequestContext = Util.getPortalRequestContext();
     return upperFirstCharacter(portalRequestContext.getPortalOwner());
@@ -177,7 +182,22 @@ public class UISpacesSwitcher extends UIContainer {
   public void setPortalSpaceLabel(String portalSpaceLabel) {
     this.portalSpaceLabel = portalSpaceLabel;
   }
-  
+
+  private void initPortalSpaceLabel() throws Exception {
+    PortalRequestContext requestContext = Util.getPortalRequestContext();
+    UserPortalConfig userPortalConfig = requestContext.getUserPortalConfig();
+    PortalConfig portalConfig = userPortalConfig.getPortalConfig();
+    String portalSpaceLabel = portalConfig.getLabel();
+    if (!StringUtils.isEmpty(portalSpaceLabel)) {
+      this.portalSpaceLabel = portalSpaceLabel;
+    } else {
+      UserPortalConfigService userPortalConfigService = getApplicationComponent(UserPortalConfigService.class);
+      DataStorage dataStorage = userPortalConfigService.getDataStorage();
+      portalConfig = dataStorage.getPortalConfig(getPortalName());
+      this.portalSpaceLabel = portalConfig.getLabel();
+    }
+  }
+
   private String upperFirstCharacter(String str) {
     if (StringUtils.isEmpty(str)) {
       return str;
@@ -191,7 +211,7 @@ public class UISpacesSwitcher extends UIContainer {
     sb.append("/").append(PortalContainer.getCurrentRestContextName());
     return sb.toString();
   }
-  
+
   protected String getSocialBaseRestUrl() {
     StringBuilder sb = new StringBuilder();
     sb.append("/").append(PortalContainer.getCurrentRestContextName());
@@ -199,12 +219,12 @@ public class UISpacesSwitcher extends UIContainer {
     sb.append("/").append(PortalContainer.getCurrentPortalContainerName());
     return sb.toString();
   }
-  
+
   protected String createSelectSpaceEvent(String spaceId) throws Exception {
     Parameter parameter = new Parameter(SPACE_ID_PARAMETER, spaceId);
-    return event(SELECT_SPACE_ACTION, null, new Parameter[] {parameter});
+    return event(SELECT_SPACE_ACTION, null, new Parameter[]{parameter});
   }
-  
+
   public static class SelectSpaceActionListener extends EventListener<UISpacesSwitcher> {
     public void execute(Event<UISpacesSwitcher> event) throws Exception {
       WebuiRequestContext context = event.getRequestContext();
