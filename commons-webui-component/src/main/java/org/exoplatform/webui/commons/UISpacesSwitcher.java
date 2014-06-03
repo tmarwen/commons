@@ -184,17 +184,21 @@ public class UISpacesSwitcher extends UIContainer {
   }
 
   private void initPortalSpaceLabel() throws Exception {
+    String portalLabel;
     PortalRequestContext requestContext = Util.getPortalRequestContext();
     UserPortalConfig userPortalConfig = requestContext.getUserPortalConfig();
     PortalConfig portalConfig = userPortalConfig.getPortalConfig();
-    String portalSpaceLabel = portalConfig.getLabel();
-    if (!StringUtils.isEmpty(portalSpaceLabel)) {
-      this.portalSpaceLabel = portalSpaceLabel;
+    if (portalConfig.getType().equals("portal")) {
+      portalLabel = portalConfig.getLabel();
     } else {
+      String currentPortalName = requestContext.getPortalOwner();
       UserPortalConfigService userPortalConfigService = getApplicationComponent(UserPortalConfigService.class);
       DataStorage dataStorage = userPortalConfigService.getDataStorage();
-      portalConfig = dataStorage.getPortalConfig(getPortalName());
-      this.portalSpaceLabel = portalConfig.getLabel();
+      portalConfig = dataStorage.getPortalConfig(currentPortalName);
+      portalLabel = portalConfig.getLabel();
+    }
+    if (!StringUtils.isEmpty(portalLabel)) {
+      this.portalSpaceLabel = portalLabel;
     }
   }
 
