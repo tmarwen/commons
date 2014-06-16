@@ -109,20 +109,22 @@ public class UISpacesSwitcher extends UIContainer {
   }
   
   public String getCurrentSpaceName() {
-    PortalRequestContext portalRequestContext = Util.getPortalRequestContext();
-    if (portalRequestContext.getPortalOwner().equalsIgnoreCase(currentSpaceName)) {
-      String spaceId = portalRequestContext.getRequestParameter(SPACE_ID_PARAMETER);
-      if (isCurrentPortalWiki()) {
-        if (StringUtils.isEmpty(spaceId)) {
-          return upperFirstCharacter(portalSpaceLabel);
+    if  (!StringUtils.isEmpty(portalSpaceLabel)) {
+      PortalRequestContext portalRequestContext = Util.getPortalRequestContext();
+      if (portalRequestContext.getPortalOwner().equalsIgnoreCase(currentSpaceName)) {
+        String spaceId = portalRequestContext.getRequestParameter(SPACE_ID_PARAMETER);
+        if (isCurrentPortalWiki()) {
+          if (StringUtils.isEmpty(spaceId)) {
+            return upperFirstCharacter(portalSpaceLabel);
+          } else {
+            if (spaceId.startsWith("/" + getPortalName())) {
+              return upperFirstCharacter(portalSpaceLabel);
+            }
+          }
         } else {
-          if (spaceId.startsWith("/" + getPortalName())) {
+          if (!StringUtils.isEmpty(spaceId) && spaceId.startsWith("/" + getPortalName())) {
             return upperFirstCharacter(portalSpaceLabel);
           }
-        }
-      } else {
-        if (!StringUtils.isEmpty(spaceId) && spaceId.startsWith("/" + getPortalName())) {
-          return upperFirstCharacter(portalSpaceLabel);
         }
       }
     }
