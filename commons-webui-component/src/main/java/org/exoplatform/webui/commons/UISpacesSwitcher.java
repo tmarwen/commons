@@ -26,7 +26,11 @@ import org.exoplatform.portal.config.DataStorage;
 import org.exoplatform.portal.config.UserPortalConfig;
 import org.exoplatform.portal.config.UserPortalConfigService;
 import org.exoplatform.portal.config.model.PortalConfig;
+import org.exoplatform.portal.mop.SiteType;
+import org.exoplatform.portal.webui.portal.UIPortal;
 import org.exoplatform.portal.webui.util.Util;
+import org.exoplatform.services.log.ExoLogger;
+import org.exoplatform.services.log.Log;
 import org.exoplatform.services.security.ConversationState;
 import org.exoplatform.web.application.Parameter;
 import org.exoplatform.web.application.RequestContext;
@@ -43,6 +47,8 @@ import org.exoplatform.webui.event.EventListener;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 
+import javax.servlet.http.HttpServletRequest;
+
 /**
  * Created by The eXo Platform SAS
  * Author : Tran Hung Phong
@@ -55,6 +61,9 @@ import java.util.ResourceBundle;
   events = {@EventConfig(listeners = UISpacesSwitcher.SelectSpaceActionListener.class)}
 )
 public class UISpacesSwitcher extends UIContainer {
+
+  private static final Log LOG = ExoLogger.getLogger("org.exoplatform.webui.commons.UISpacesSwitcher");
+
   public static final String SPACE_ID_PARAMETER = "spaceId";
   
   public static final String SELECT_SPACE_ACTION = "SelectSpace";
@@ -102,10 +111,22 @@ public class UISpacesSwitcher extends UIContainer {
   public String getCurrentSpaceName() {
     PortalRequestContext portalRequestContext = Util.getPortalRequestContext();
     if (portalRequestContext.getPortalOwner().equalsIgnoreCase(currentSpaceName)) {
-      return upperFirstCharacter(portalSpaceLabel);
-    } else {
-      return upperFirstCharacter(currentSpaceName);
+      String spaceId = portalRequestContext.getRequestParameter(SPACE_ID_PARAMETER);
+      if (isCurrentPortalWiki()) {
+        if (StringUtils.isEmpty(spaceId)) {
+          return upperFirstCharacter(portalSpaceLabel);
+        } else {
+          if (spaceId.startsWith("/" + getPortalName())) {
+            return upperFirstCharacter(portalSpaceLabel);
+          }
+        }
+      } else {
+        if (!StringUtils.isEmpty(spaceId) && spaceId.startsWith("/" + getPortalName())) {
+          return upperFirstCharacter(portalSpaceLabel);
+        }
+      }
     }
+    return upperFirstCharacter(currentSpaceName);
   }
   
   public String getMySpaceLabel() {
@@ -175,7 +196,57 @@ public class UISpacesSwitcher extends UIContainer {
     PortalContainerInfo containerInfo = (PortalContainerInfo)container.getComponentInstanceOfType(PortalContainerInfo.class);
     return containerInfo.getContainerName();
   }
-  
+
+  public boolean isCurrentPortalWiki() {
+    PortalRequestContext portalRequestContext = Util.getPortalRequestContext();
+    SiteType portalType = portalRequestContext.getSiteType();
+    if (!portalType.equals(SiteType.PORTAL)) {
+      return false;
+    } else {
+      HttpServletRequest request = portalRequestContext.getRequest();
+      String requestURL = request.getRequestURL().toString();
+      UIPortal uiPortal = Util.getUIPortal();
+      String pageNodeSelected = null;
+      try
+      {
+        pageNodeSelected = uiPortal.getSelectedUserNode().getURI();
+      } catch (Exception e)
+      {
+        LOG.error("An error occured while retrieving selected page node: ", e);
+      }
+      if (!requestURL.contains(pageNodeSelected)) {
+        // Happens at the first time processRender() called when add wiki portlet manually
+        requestURL = portalRequestContext.getPortalURI() + pageNodeSelected;
+      }
+      String wikiPageName;
+      if (pageNodeSelected == null) {
+        wikiPageName = "wiki";
+      } else {
+        wikiPageName = pageNodeSelected;
+      }
+      String uri = StringUtils.EMPTY;
+      String sign1 = "/" + wikiPageName + "/";
+      String sign2 = "/" + wikiPageName;
+      if(requestURL.lastIndexOf(sign1) < 0){
+        if(requestURL.lastIndexOf(sign2) > 0) {
+          uri = requestURL.substring(requestURL.lastIndexOf(sign2) + sign2.length()) ;
+        }
+      } else{
+        uri = requestURL.substring(requestURL.lastIndexOf(sign1) + sign1.length()) ;
+      }
+      if(uri != null && uri.length() > 0 && (uri.lastIndexOf("/") + 1) == uri.length())
+        uri = uri.substring(0, uri.lastIndexOf("/")) ;
+
+      if(uri.indexOf("/") > 0) {
+        String[] array = uri.split("/");
+        if (array[0].equals(PortalConfig.USER_TYPE)) {
+          return false;
+        }
+      }
+      return true;
+    }
+  }
+
   public String getPortalSpaceLabel() {
     if (!StringUtils.isEmpty(portalSpaceLabel)) {
       return upperFirstCharacter(portalSpaceLabel);
