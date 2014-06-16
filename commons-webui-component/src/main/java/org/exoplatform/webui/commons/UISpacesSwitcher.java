@@ -100,7 +100,12 @@ public class UISpacesSwitcher extends UIContainer {
   }
   
   public String getCurrentSpaceName() {
-    return currentSpaceName;
+    PortalRequestContext portalRequestContext = Util.getPortalRequestContext();
+    if (portalRequestContext.getPortalOwner().equalsIgnoreCase(currentSpaceName)) {
+      return upperFirstCharacter(portalSpaceLabel);
+    } else {
+      return upperFirstCharacter(currentSpaceName);
+    }
   }
   
   public String getMySpaceLabel() {
